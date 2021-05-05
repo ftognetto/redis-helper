@@ -1,9 +1,10 @@
 {
   "name": "@quantos/redis-helper",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Quantos redis helper for node",
   "author": "fabriziotognetto <info@quantos.it>",
   "main": "dist/index.js",
+  "repository": "github:quantosapplications/redis-helper",
   "scripts": {
     "build": "tsc"
   },
