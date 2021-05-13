@@ -1,1 +1,1 @@
-declare module '@bigartwall/redis-helper';
+declare module '@quantos/redis-helper';
