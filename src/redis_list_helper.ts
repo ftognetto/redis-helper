@@ -23,7 +23,7 @@ export class RedisListHelper<T> {
     private _cacheDisabled = false;
 
     constructor(config: RedisListHelperConfig<T>) {
-        this._redis = redis.createClient(config.port, config.host);
+        this._redis = redis.createClient(config.port, config.host, { enable_offline_queue: false });
         const _self = this;
         this._redis.on('error', function(error: any): void {
             console.error(error);
