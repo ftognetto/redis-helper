@@ -2,8 +2,9 @@ import * as redis from 'redis';
 import { promisify } from 'util';
 
 export interface RedisValueHelperConfig<T> {
-    host: string;
-    port: number;
+    client?: redis.RedisClient;
+    host?: string;
+    port?: number;
     prefix?: string;
     ttl?: number;
 }
@@ -20,7 +21,11 @@ export class RedisValueHelper<T> {
     private _cacheDisabled = false;
 
     constructor(config: RedisValueHelperConfig<T>) {
-        this._redis = redis.createClient(config.port, config.host, { enable_offline_queue: false });
+
+        if (config.client) { this._redis = config.client; }
+        else if (config.port && config.host) { this._redis = redis.createClient(config.port, config.host, { enable_offline_queue: false }); }
+        else { throw Error('[@quantos/redis-helper][RedisValueHelper] invalid configuration. A client or host and port must be supplied.') }
+
         const _self = this;
         this._redis.on('error', function(error: any): void {
             console.error(error);
@@ -57,6 +62,15 @@ export class RedisValueHelper<T> {
         }
        
         return null;
+    }
+
+    async getCacheds(keys: string[]): Promise<T[]> {
+        const cacheds: T[] = [];
+        for (const key of keys) {
+            const cached = await this.getCached(key);
+            if (cached) { cacheds.push(cached); }
+        }
+        return cacheds;
     }
 
     async setCached(key: string, value: T): Promise<void> {
