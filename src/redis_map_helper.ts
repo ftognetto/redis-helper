@@ -2,8 +2,9 @@ import * as redis from 'redis';
 import { promisify } from 'util';
 
 export interface RedisMapHelperConfig<T> {
-    host: string;
-    port: number;
+    client?: redis.RedisClient;
+    host?: string;
+    port?: number;
     prefix?: string;
     keyExtractor: (obj?: T) => string;
     ttl?: number;
@@ -32,7 +33,11 @@ export class RedisMapHelper<T> {
     private _cacheDisabled = false;
 
     constructor(config: RedisMapHelperConfig<T>) {
-        this._redis = redis.createClient(config.port, config.host, { enable_offline_queue: false });
+        
+        if (config.client) { this._redis = config.client; }
+        else if (config.port && config.host) { this._redis = redis.createClient(config.port, config.host, { enable_offline_queue: false }); }
+        else { throw Error('[@quantos/redis-helper][RedisValueHelper] invalid configuration. A client or host and port must be supplied.') }
+
         const _self = this;
         this._redis.on('error', function(error: any): void {
             console.error(error);

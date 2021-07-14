@@ -1,6 +1,6 @@
 {
   "name": "@quantos/redis-helper",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Quantos redis helper for node",
   "author": "fabriziotognetto <info@quantos.it>",
   "main": "dist/index.js",
