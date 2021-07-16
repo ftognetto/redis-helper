@@ -7,6 +7,7 @@ export interface RedisValueHelperConfig<T> {
     port?: number;
     prefix?: string;
     ttl?: number;
+    disableListeners?: boolean;
 }
 export class RedisValueHelper<T> {
 
@@ -27,17 +28,19 @@ export class RedisValueHelper<T> {
         else { throw Error('[@quantos/redis-helper][RedisValueHelper] invalid configuration. A client or host and port must be supplied.') }
 
         const _self = this;
-        this._redis.on('error', function(error: any): void {
-            console.error(error);
-            if (error.code === 'ECONNREFUSED') {
-                _self._cacheDisabled = true;
-            }
-            if (error.code === 'ETIMEDOUT') {
-                _self._cacheDisabled = true;
-                setTimeout(() => { _self._cacheDisabled = false; }, 10000);
-            }
-            
-        });
+        if (!config.disableListeners) {
+            this._redis.on('error', function(error: any): void {
+                console.error(error);
+                if (error.code === 'ECONNREFUSED') {
+                    _self._cacheDisabled = true;
+                }
+                if (error.code === 'ETIMEDOUT') {
+                    _self._cacheDisabled = true;
+                    setTimeout(() => { _self._cacheDisabled = false; }, 10000);
+                }
+                
+            });
+        }
 
         this._prefix = config.prefix || '';
         this._ttl = config.ttl || 60 * 5;
