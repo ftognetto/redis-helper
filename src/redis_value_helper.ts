@@ -79,7 +79,7 @@ export class RedisValueHelper<T> {
     async setCached(key: string, value: T): Promise<void> {
         if (this._cacheDisabled) { return; }
         try {
-            await this._setAsync(key, this._ttl, JSON.stringify(value));
+            await this._setAsync(`${this._prefix}:${key}`, this._ttl, JSON.stringify(value));
         }
         catch (e) {
             // do nothing
