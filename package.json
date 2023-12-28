@@ -9,12 +9,12 @@
     "build": "tsc"
   },
   "dependencies": {
-    "redis": "^3.0.2"
+    "redis": "^4.6.5"
   },
   "devDependencies": {
-    "@types/redis": "^2.8.28",
-    "ts-loader": "^5.3.3",
+    "@types/redis": "^4.0.11",
+    "ts-loader": "^9.4.2",
     "tslint": "^6.1.3",
-    "typescript": "^4.0.5"
+    "typescript": "^4.9.5"
   }
 }

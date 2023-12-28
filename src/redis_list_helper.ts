@@ -1,19 +1,14 @@
-import * as redis from 'redis';
-import { promisify } from 'util';
+import { createClient, RedisClientType } from 'redis';
 
 export interface RedisListHelperConfig<T> {
-  client?: redis.RedisClient;
+  client?: RedisClientType;
   url?: string;
   prefix?: string;
   keyExtractor: (obj: T) => string;
   ttl?: number;
 }
 export class RedisListHelper<T> {
-  private _redis: redis.RedisClient;
-
-  private _getAsync: (key: string) => Promise<string | null>;
-  private _setAsync: (key: string, ttl: number, value: string) => Promise<string>;
-  private _lpushAsync: (key: string, value: string) => Promise<number>;
+  private _redis: RedisClientType;
 
   private _prefix: string;
   private _key: (obj: T) => string;
@@ -22,15 +17,19 @@ export class RedisListHelper<T> {
   private _cacheDisabled = false;
 
   constructor(config: RedisListHelperConfig<T>) {
+    const _self = this;
+
     if (config.client) {
       this._redis = config.client;
     } else if (config.url) {
-      this._redis = redis.createClient({ url: config.url, enable_offline_queue: false });
+      this._redis = createClient({ url: config.url });
+      this._redis.connect().catch((err) => {
+        throw Error('[@quantos/redis-helper][RedisValueHelper] ' + err);
+      });
     } else {
       throw Error('[@quantos/redis-helper][RedisValueHelper] invalid configuration. A client or host and port must be supplied.');
     }
 
-    const _self = this;
     this._redis.on('error', function (error: any): void {
       console.error(error);
       if (error.code === 'ECONNREFUSED') {
@@ -47,10 +46,6 @@ export class RedisListHelper<T> {
     this._prefix = config.prefix || '';
     this._key = (obj) => `${config.prefix}:${config.keyExtractor(obj)}`;
     this._ttl = config.ttl || 60 * 5;
-
-    this._getAsync = promisify(this._redis.get).bind(this._redis);
-    this._setAsync = promisify(this._redis.setex).bind(this._redis);
-    this._lpushAsync = promisify(this._redis.lpush).bind(this._redis);
   }
 
   async getCacheds(ids: string[]): Promise<T[]> {
@@ -61,7 +56,7 @@ export class RedisListHelper<T> {
     try {
       for (const id of ids) {
         try {
-          const data = await this._getAsync(`${this._prefix}:${id}`);
+          const data = await this._redis.get(`${this._prefix}:${id}`);
           if (data) {
             const cached: T = JSON.parse(data);
             cacheds.push(cached);
@@ -91,7 +86,7 @@ export class RedisListHelper<T> {
     }
     for (const value of values) {
       try {
-        await this._setAsync(this._key(value), this._ttl, JSON.stringify(value));
+        await this._redis.set(this._key(value), JSON.stringify(value), { EX: this._ttl });
       } catch (e) {
         // do nothing
       }
@@ -103,7 +98,7 @@ export class RedisListHelper<T> {
       return;
     }
     try {
-      await this._lpushAsync(this._key(value), JSON.stringify(value));
+      await this._redis.lPush(this._key(value), JSON.stringify(value));
     } catch (e) {
       // do nothing??
     }

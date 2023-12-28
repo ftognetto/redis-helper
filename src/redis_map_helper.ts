@@ -1,28 +1,14 @@
-import * as redis from 'redis';
-import { promisify } from 'util';
+import { createClient, RedisClientType } from 'redis';
 
 export interface RedisMapHelperConfig<T> {
-  client?: redis.RedisClient;
+  client?: RedisClientType;
   url?: string;
   prefix?: string;
   keyExtractor: (obj?: T) => string;
   ttl?: number;
 }
 export class RedisMapHelper<T> {
-  _redis: redis.RedisClient;
-
-  private _getAsync: (key: string) => Promise<string | null>;
-  private _setAsync: (key: string, value: string) => Promise<unknown>;
-  private _setExAsync: (key: string, ttl: number, value: string) => Promise<string>;
-  private _delAsync: (key: string) => Promise<number>;
-
-  private _lpushAsync: (key: string, value: string) => Promise<number>;
-  private _rpushAsync: (key: string, value: string) => Promise<number>;
-  private _lpopAsync: (key: string) => Promise<String>;
-  private _rpopAsync: (key: string) => Promise<String>;
-
-  private _lrangeAsync: (key: string, start: number, end: number) => Promise<string[]>;
-  private _lindexAsync: (key: string, index: number) => Promise<string>;
+  _redis: RedisClientType;
 
   private _prefix: string;
   private _key: (obj?: T) => string;
@@ -34,7 +20,10 @@ export class RedisMapHelper<T> {
     if (config.client) {
       this._redis = config.client;
     } else if (config.url) {
-      this._redis = redis.createClient({ url: config.url, enable_offline_queue: false });
+      this._redis = createClient({ url: config.url });
+      this._redis.connect().catch((err) => {
+        throw Error('[@quantos/redis-helper][RedisValueHelper] ' + err);
+      });
     } else {
       throw Error('[@quantos/redis-helper][RedisValueHelper] invalid configuration. A client or host and port must be supplied.');
     }
@@ -56,18 +45,6 @@ export class RedisMapHelper<T> {
     this._prefix = config.prefix || '';
     this._key = (obj?: T) => `${config.prefix}:${config.keyExtractor(obj)}`;
     this._ttl = config.ttl || 60 * 5;
-
-    this._getAsync = promisify(this._redis.get).bind(this._redis);
-    this._setAsync = promisify(this._redis.set).bind(this._redis);
-    this._setExAsync = promisify(this._redis.setex).bind(this._redis);
-    this._delAsync = promisify(this._redis.del).bind(this._redis);
-
-    this._lpushAsync = promisify(this._redis.lpush).bind(this._redis);
-    this._rpushAsync = promisify(this._redis.rpush).bind(this._redis);
-    this._lpopAsync = promisify(this._redis.lpop).bind(this._redis);
-    this._rpopAsync = promisify(this._redis.rpop).bind(this._redis);
-    this._lrangeAsync = promisify(this._redis.lrange).bind(this._redis);
-    this._lindexAsync = promisify(this._redis.lindex).bind(this._redis);
   }
 
   async getCacheds(ids: string[]): Promise<T[]> {
@@ -78,7 +55,7 @@ export class RedisMapHelper<T> {
     try {
       for (const id of ids) {
         try {
-          const data = await this._getAsync(`${this._prefix}:${id}`);
+          const data = await this._redis.get(`${this._prefix}:${id}`);
           if (data) {
             const cached: T = JSON.parse(data);
             cacheds.push(cached);
